@@ -13,15 +13,11 @@ class Program
             string outputFilePath = "Out0304.txt";
 
             // Wczytaj dane z pliku
-            int[] data = ReadInputFile(inputFilePath);
-
-            // Przetwarzaj dane
-            int numVertices = data[0];
-            List<Edge> edges = BuildEdgeList(data);
+            List<Edge> edges = ReadInputFile(inputFilePath);
 
             // Algorytm Jarnika-Prima
-            int startVertex = 2; // Możesz zmienić na inny wierzchołek startowy
-            List<Edge> mdr = GenerateMDR(edges, startVertex, numVertices);
+            int startVertex = 11; // Możesz zmienić na inny wierzchołek startowy
+            List<Edge> mdr = GenerateMDR(edges, startVertex);
 
             // Wypisz wyniki na konsoli
             Console.WriteLine("Minimalne drzewo rozpinające:");
@@ -42,52 +38,44 @@ class Program
         }
     }
 
-    static int[] ReadInputFile(string filePath)
+    static List<Edge> ReadInputFile(string filePath)
     {
+        List<Edge> edges = new List<Edge>();
         string[] lines = File.ReadAllLines(filePath);
 
+        // Dodaj obsługę pustego pliku
+        if (lines.Length == 0)
+        {
+            throw new FormatException("Plik wejściowy jest pusty.");
+        }
+
         // Parsowanie liczby wierzchołków
-        int numVertices = int.Parse(lines[0]);
-
-        // Parsowanie list incydencji
-        List<int> data = new List<int> { numVertices };
-        int currentIndex = 1;
-        for (int i = 1; i < lines.Length; i++)
+        if (int.TryParse(lines[0], out int numVertices))
         {
-            string[] edgeData = lines[i].Split(' ');
-
-            foreach (string weight in edgeData)
+            for (int i = 1; i < lines.Length; i++)
             {
-                data.Add(int.Parse(weight));
+                string[] edgeData = lines[i].Split(' ');
+
+                if (edgeData.Length % 2 == 1)
+                {
+                    throw new FormatException($"Nieprawidłowy format danych w linii {i + 1}.");
+                }
+
+                for (int j = 0; j < edgeData.Length; j += 2)
+                {
+                    int neighbor = int.Parse(edgeData[j]);
+                    int weight = int.Parse(edgeData[j + 1]);
+                    edges.Add(new Edge(i, neighbor, weight));
+                }
             }
         }
-
-        return data.ToArray();
-    }
-
-    static List<Edge> BuildEdgeList(int[] data)
-    {
-        int numVertices = data[0];
-        List<Edge> edges = new List<Edge>();
-
-        int currentIndex = 1;
-        for (int vertex = 0; vertex < numVertices; vertex++)
+        else
         {
-            int numEdges = data[currentIndex++];
-            for (int j = 0; j < numEdges; j++)
-            {
-                int neighbor = data[currentIndex++];
-                int weight = data[currentIndex++];
-                edges.Add(new Edge(vertex + 1, neighbor, weight));
-            }
+            throw new FormatException("Nieprawidłowy format liczby wierzchołków.");
         }
-
-        // Sortuj krawędzie ze względu na wartości wag
-        edges.Sort();
 
         return edges;
     }
-
 
     static void WriteOutputFile(string filePath, List<Edge> edges)
     {
@@ -109,30 +97,30 @@ class Program
         Console.WriteLine($"\nWyniki zapisano do pliku: {filePath}");
     }
 
-    static List<Edge> GenerateMDR(List<Edge> edges, int startVertex, int numVertices)
+    static List<Edge> GenerateMDR(List<Edge> edges, int startVertex)
     {
         List<Edge> mdr = new List<Edge>();
-        bool[] visitedVertices = new bool[numVertices + 1];
-        visitedVertices[startVertex] = true;
+        List<int> visitedVertices = new List<int>();
+        visitedVertices.Add(startVertex);
 
         // Utwórz kopię listy edges z klonami obiektów Edge
         List<Edge> sortedEdges = edges.Select(edge => new Edge(edge.Vertex1, edge.Vertex2, edge.Weight)).ToList();
 
-        for (int i = 1; i < numVertices; i++)
+        for (int i = 1; i < sortedEdges.Count; i++)
         {
             // Sortuj krawędzie ze względu na wartości wag przy każdej iteracji
             sortedEdges.Sort();
-
+            Console.WriteLine("{numVertices}");
             for (int j = 0; j < sortedEdges.Count; j++)
             {
                 Edge currentEdge = sortedEdges[j];
 
-                if ((visitedVertices[currentEdge.Vertex1] && !visitedVertices[currentEdge.Vertex2]) ||
-                    (visitedVertices[currentEdge.Vertex2] && !visitedVertices[currentEdge.Vertex1]))
+                if ((visitedVertices.Contains(currentEdge.Vertex1) && !visitedVertices.Contains(currentEdge.Vertex2)) ||
+                    (visitedVertices.Contains(currentEdge.Vertex2) && !visitedVertices.Contains(currentEdge.Vertex1)))
                 {
                     mdr.Add(currentEdge);
-                    visitedVertices[currentEdge.Vertex2] = true;
-                    visitedVertices[currentEdge.Vertex1] = true;
+                    visitedVertices.Add(currentEdge.Vertex2);
+                    visitedVertices.Add(currentEdge.Vertex1);
                     sortedEdges.RemoveAt(j);
                     break;
                 }
@@ -141,9 +129,6 @@ class Program
 
         return mdr;
     }
-
-
-
 
     class Edge : IComparable<Edge>
     {
